@@ -215,7 +215,7 @@ perl(1), PDL(1), pscoast(l).
 =cut
 EOD
 
-$VERSION = '0.05';
+$VERSION = '0.07';
 
 #-------------------------------------------------------------------------
 # Perl portion of the interface (put by PP into the .pm file)
@@ -243,10 +243,10 @@ sub fetch {
   my $res = exists($$parms{RESOLUTION}) ? 
 	substr($$parms{RESOLUTION}, 0, 1) : 'c';  # defaults to crude resolution
 
-  my @rivers = @{$$parms{RIVER_DETAIL}};
+  my @rivers = exists($$parms{RIVER_DETAIL}) ? @{$$parms{RIVER_DETAIL}} : ();
   push (@rivers, (0) x 10);  # note 10 river types
 
-  my @borders = @{$$parms{BOUNDARIES}};
+  my @borders = exists($$parms{BOUNDARIES}) ? @{$$parms{BOUNDARIES}} : ();
   push (@borders, (0) x 3);  # note 3 boundary types
 
   my $rlevels = pack ("i*", @rivers);     # defaults to no rivers and canals
@@ -318,7 +318,7 @@ sub lonlat2azequi {
 
   # set all points at origin to 0,0
   (my $t = $x->where($m)) .= 0;
-  (my $t = $y->where($m)) .= 0;
+  ($t = $y->where($m)) .= 0;
 
   return ($x, $y);
 }
@@ -377,6 +377,12 @@ sub map_points {
   my $lat = shift;
   my $parms = shift;
 
+  my $sym;
+  unless (ref($parms) =~ /HASH/) {
+    $sym   = $parms;
+    $parms = shift;
+  }
+
   my $proj = exists($$parms{PROJECTION}) ? $$parms{PROJECTION} : 'LINEAR';  #  defaults to LINEAR
   my @o    = (0,0);   # dummy projection center
 
@@ -389,7 +395,7 @@ sub map_points {
   my ($x, $y) = &{$projection{$proj}}($lon, $lat, @o);
 
   # plot
-  points $x, $y, $parms;
+  points $x, $y, $sym, $parms;
 }
 
 
@@ -413,7 +419,7 @@ sub map_line {
   # plot
   line $x, $y, $parms;
 }
-  
+
 # Draw a map of some section of the World in various projections and with various
 # options.  See POD doc above for details.
 sub worldmap {
@@ -464,14 +470,18 @@ sub worldmap {
   ## set up PGPLOT
   #
 
-  unless ($PDL::Graphics::PGPLOT::hold) {
+  my $win = PDL::Graphics::PGPLOT::get_current_window();
+  die "Must define a window with new_window first!" unless defined($win);
+  unless ($win->{Hold}) {
     pgscr 0, 1,1,1;    # set background color = white
     pgscr 3, 0,0,0;    # set axis color = black
     pgenv @bxy, 1, -2; # set bounds, specify equal scale on X/Y axes
     pgsci (3);         # set to black
     pgbox ('BC', 0, 0, 'BC', 0, 0);  # plot minimal border
-    $PDL::Graphics::PGPLOT::hold = 1;
+    $win->hold();
   }
+
+  return if ($$parms{SetupMap});  # don't do anything more if setup only requested
 
   #
   ## get coasts/rivers/borders from GMT database
@@ -549,7 +559,7 @@ sub worldmap {
     $angles = ($angles < -90) * ($angles + 180) + ($angles >= -90) * $angles;
 
     # make sure the label is on the map
-    my $m = ($x1 > $bxy[0] & $x1 < $bxy[1] & $y1 > $bxy[2] & $y1 < $bxy[3]);
+    $m = ($x1 > $bxy[0] & $x1 < $bxy[1] & $y1 > $bxy[2] & $y1 < $bxy[3]);
 
     # Plot longitude labels
     pgsch(0.85);  # small characters
@@ -609,7 +619,7 @@ sub worldmap {
     $angles = ($angles < -90) * ($angles + 180) + ($angles >= -90) * $angles;
 
     # make sure the label is on the map
-    my $m = ($x1 > $bxy[0] & $x1 < $bxy[1] & $y1 > $bxy[2] & $y1 < $bxy[3]);
+    $m = ($x1 > $bxy[0] & $x1 < $bxy[1] & $y1 > $bxy[2] & $y1 < $bxy[3]);
 
     # Plot latitude labels
     pgsch(0.85);  # small characters

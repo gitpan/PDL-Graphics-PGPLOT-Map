@@ -11,6 +11,7 @@ END {print "not ok 1\n" unless $loaded;}
 use PDL;
 use PDL::Graphics::PGPLOT;
 use PDL::Graphics::PGPLOT::Map;
+$ENV{PGPLOT_FONT}='/usr/lib/pgplot/grfont.dat';
 $loaded = 1;
 print "ok 1\n";
 
@@ -24,8 +25,9 @@ print "ok 1\n";
 
 my ($lon, $lat) = PDL::Graphics::PGPLOT::Map::fetch({RESOLUTION => 'crude'});
 
-dev "testmap1.gif/GIF";
+new_window "testmap1.gif/GIF";
 line $lon, $lat, {MISSING => -999};
+close_window();
 
 my $lat100 = pdl [-999,  79.15938, 79.621118,   79.3608, 80.058747,  78.90547, 79.788663, 79.263752, 79.579919, 79.877165, 79.546654, 78.204471, 78.850538, 78.457771, 78.716258, 78.429389, 78.056764, 77.716182, 77.929198, 77.653315, 77.459525, 77.524224, 76.999924, 76.999924,  76.59617,  78.42237, 78.548714,-999, 80.429236, 80.505531, 80.136263, 80.125887, 79.711147, 79.749905,-999, 78.526741, 78.206912, 78.903639, 78.527352, 78.526741,-999,70, 70.172427, 70.069581, 70.397345, 70.884718, 70.426947, 70.970169, 71.131304, 70.463264, 70.358282, 70.968032, 70.065309, 70.874037, 70.992142,70,-999, 79.749905, 79.802396, 79.452964, 79.181353, 79.943389,  79.94461, 80.346227, 80.103609, 80.504616,  79.97116, 80.429236,-999, 77.623713, 78.253605, 78.113222, 77.438773, 77.614557, 77.237049, 77.623713, 77.623713,-999, 78.204471, 78.612802, 78.480049, 78.205692, 78.204471,-999, 70.970474, 71.097429, 70.970474, 70.970474,-999,  70.33875, 70.621347,  70.33875,  70.33875,-999, 78.838636, 78.907607, 78.838636, 78.838636,-999, 70.266728, 70.334173];
 
@@ -46,8 +48,9 @@ my $tol = 1e-4;
 my $ok = (sum(abs($lat100 - $lat->slice("0:100"))) < $tol) ? "ok 3" : "not ok 3";
 print "$ok\n";
 
-dev "testmap2.gif/GIF";
+new_window "testmap2.gif/GIF";
 line $lon, $lat, {MISSING => -99999};
+close_window();
 
 my @bounds = (0, 180, 0, 90);
 my ($lon, $lat) = PDL::Graphics::PGPLOT::Map::fetch({RESOLUTION => 'low',
@@ -71,21 +74,22 @@ print "The GIF driver must be installed.  Verify that files testmap1.gif through
 print "are created and look reasonable.\n";
 
 
-dev "testmap3.gif/GIF";
+new_window "testmap3.gif/GIF";
 line $lon, $lat, {MISSING => -99999};
+close_window();
 
-dev "testmap4.gif/GIF";
+new_window "testmap4.gif/GIF";
 worldmap ();
-release;
+close_window();
 
-dev "testmap5.gif/GIF";
+new_window "testmap5.gif/GIF";
 worldmap ({PROJECTION => 'AZEQDIST', # Azimuthal Equidistant projection
            CENTER  => [-170, 70],    # map centered at 170 deg west lon, 70 deg north lat
            RADIUS  => 3000});        # 3000 kilometer minimum radius
-release;
+close_window();
 
 # equatorial case
-dev "testmap6.gif/GIF";
+new_window "testmap6.gif/GIF";
 worldmap ({PROJECTION => 'AZEQDIST', # Azimuthal Equidistant projection
            CENTER  => [-10,  20],    # map centered at 170 deg west lon, 70 deg north lat
            RADIUS  => 3000,          # 3000 kilometer minimum radius
@@ -95,10 +99,11 @@ worldmap ({PROJECTION => 'AZEQDIST', # Azimuthal Equidistant projection
 
 # plot projection center point
 map_points (pdl([-10]), pdl([20]), {PROJECTION => 'AZEQDIST', CENTER  => [-10,  20], COLOR => 8});
-release;
+close_window();
+
 
 # polar case near date line
-dev "testmap7.gif/GIF";
+new_window "testmap7.gif/GIF";
 worldmap ({PROJECTION => 'AZEQDIST', # Azimuthal Equidistant projection
            CENTER  => [-170,  80],   # map centered at 170 deg west lon, 80 deg north lat
            RADIUS  => 3000,          # 3000 kilometer minimum radius
@@ -107,8 +112,7 @@ worldmap ({PROJECTION => 'AZEQDIST', # Azimuthal Equidistant projection
 	   LATGRID => 10});          # latitude grid lines every 10 degrees
 
 map_line (pdl(-170, -160), pdl(80, 90), {PROJECTION => 'AZEQDIST', CENTER  => [-170,  80], COLOR => 9});
-release;
-
+close_window();
 
 print "Done!\n";
 
