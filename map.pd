@@ -29,10 +29,7 @@ NOTE:  This module *requires* bad value support! (Use a recent (cvs) version of 
   # or, alternatively, in two steps:
   dev "pdlmap2.ps/CPS";
   my ($lon, $lat) = PDL::Graphics::PGPLOT::Map::fetch (
-                                     {WEST         => -180, 
-				      EAST         =>  180, 
-                                      SOUTH        =>  -90,
-                                      NORTH        =>   90, 
+                                     {BOX => [-180, 180, -90, 90],
                                       SEPARATOR    => -999});
   # Plot the entire set of coastline polylines 
   line $lon, $lat, {MISSING => -999};
@@ -166,10 +163,7 @@ Get lon and lat PDLs.
 
 Arguments:  
   A hash reference with these options available:
-  WEST  : the Western border of the map (degrees west -180 - 180)
-  EAST  : the Eastern border of the map (degrees west -180 - 180)
-  SOUTH : the Southern border of the map (degrees north -90 - 90)
-  NORTH : the Northern border of the map (degrees north -90 - 90)
+  BOX   : An array ref containing [minlon, maxlon, minlat, maxlat] in degrees -180 to 180, -90 to 90
 
   RESOLUTION : The size of the map database used:  "full", "high", "intermediate", "low" or "crude"
 
@@ -197,10 +191,7 @@ Returns:  ($lon, $lat) large 1-D PDLs
 
 =for example
   ($lon, $lat) = PDL::Graphics::Map::fetch (
-                                     {WEST  => -180, 
-				      EAST  => 180, 
-                                      SOUTH => -90,
-                                      NORTH => 90, 
+                                     {BOX => [-180, 180, -90, 90],
                                       RESOLUTION => 'crude', 
                                       RIVER_DETAIL => [1,2,3,4]};
 
@@ -215,7 +206,7 @@ perl(1), PDL(1), pscoast(l).
 =cut
 EOD
 
-$VERSION = '0.07';
+$VERSION = '0.09';
 
 #-------------------------------------------------------------------------
 # Perl portion of the interface (put by PP into the .pm file)
@@ -471,8 +462,8 @@ sub worldmap {
   #
 
   my $win = PDL::Graphics::PGPLOT::get_current_window();
-  die "Must define a window with new_window first!" unless defined($win);
-  unless ($win->{Hold}) {
+  warn "Unable to get current window handle.  Please upgrade your PDL installation" unless defined($win);
+  if (!defined($win) || !$win->{Hold}) {  # set up plotting environment if not on hold
     pgscr 0, 1,1,1;    # set background color = white
     pgscr 3, 0,0,0;    # set axis color = black
     pgenv @bxy, 1, -2; # set bounds, specify equal scale on X/Y axes
@@ -487,7 +478,12 @@ sub worldmap {
   ## get coasts/rivers/borders from GMT database
   #
 
-  my ($lonmap, $latmap) = fetch({%$parms, BOX => \@b, SEPARATOR  => $bad});
+  my $minlon = $b[0] - 20 < -180 ? -180 :  $b[0] - 20;
+  my $maxlon = $b[1] + 20 >  180 ?  180 :  $b[1] + 20;
+  my $minlat = $b[2] - 10 <  -90 ?  -90 :  $b[2] - 10;
+  my $maxlat = $b[3] + 10 >   90 ?   90 :  $b[3] + 10;
+  my $box = [$minlon, $maxlon, $minlat, $maxlat];
+  my ($lonmap, $latmap) = fetch({%$parms, BOX => $box, SEPARATOR  => $bad});
 
   # set separator to the bad value, so projection won't operate on it.
   $lonmap->inplace->setvaltobad($bad);
