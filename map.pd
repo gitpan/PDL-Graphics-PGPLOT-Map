@@ -1,0 +1,653 @@
+use Config;
+
+pp_add_exported('', 'worldmap map_line map_points'); 
+
+pp_addpm({At => Top}, <<'EOD');
+=head1 NAME 
+
+PDL::Graphics::PGPLOT::Map - Interface to the GMT coastline database for plotting maps
+
+Perl/PDL interface to GMT's pscoast function to get binary coastline/river/boundary
+info into a (big) PDL of latitude/longitude line segments.
+
+NOTE:  This module *requires* bad value support! (Use a recent (cvs) version of PDL.
+       Set WITH_BADVAL => 1 in perldl.conf).
+
+=head1 SYNOPSIS
+
+  use PDL;
+  use PDL::Graphics::Map;
+  use PDL::Graphics::PGPLOT;
+
+  #
+  ## plot just the coastlines in a linear projection
+  #
+
+  dev "pdlmap1.ps/CPS";
+  worldmap ({WEST  => -180, EAST  => 180, SOUTH => -90, NORTH => 90});
+
+  # or, alternatively, in two steps:
+  dev "pdlmap2.ps/CPS";
+  my ($lon, $lat) = PDL::Graphics::PGPLOT::Map::fetch (
+                                     {WEST         => -180, 
+				      EAST         =>  180, 
+                                      SOUTH        =>  -90,
+                                      NORTH        =>   90, 
+                                      SEPARATOR    => -999});
+  # Plot the entire set of coastline polylines 
+  line $lon, $lat, {MISSING => -999};
+
+  #
+  ## Plot coastlines, lat/lon grids and labels in an Azimuthal Equidistant projection
+  #
+
+  dev "pdlmap3.ps/CPS";
+  worldmap ({PROJECTION => 'AZEQDIST', # Azimuthal Equidistant projection
+	     CENTER  => [-170, 70],    # map centered at 170 deg west lon, 70 deg north lat
+             RADIUS  => 3000,          # 3000 kilometer minimum radius
+	     LONGRID => 10,            # longitude grid lines every 10 degrees
+	     LATGRID => 10});          # latitude grid lines every 10 degrees
+
+  #
+  ## Plot points on the map
+  #
+
+  my ($lon, $lat) = getsomepoints();
+  map_points ($lon, $lat, {PROJECTION => 'AZEQDIST', CENTER  => [-170, 70]});
+
+  #
+  ## Plot lines on the map
+  #
+
+  my ($lon, $lat) = getsomemorepoints();
+  map_line ($lon, $lat, {PROJECTION => 'AZEQDIST', CENTER  => [-170, 70], MISSING => -999});
+  
+For more information on GMT, see http://www.soest.hawaii.edu/gmt/ 
+
+=head1 DESCRIPTION
+
+This is the PDL interface to the GMT map databases, allowing one to create
+pleasing world maps in either of two projections:
+
+1) linear (no projection)
+2) Azimuthal Equidistant 
+
+using PGPLOT.
+
+Routines are also supplied to allow plotting of points and lines (supplied in degrees lon/lat)
+on the maps with the correct projection supplied.
+
+=head1 FUNCTIONS
+
+=head2 worldmap
+
+=for ref
+
+Plot a world map using PGPLOT.
+
+=for usage
+
+Arguments: just a hash reference which can contain the following keywords:
+
+  PROJECTION  : LINEAR (default) or AZEQDIST
+
+For LINEAR projections:
+
+  WEST  : the Western border of the map (degrees west -180 - 180)  
+  EAST  : the Eastern border of the map (degrees west -180 - 180)
+  SOUTH : the Southern border of the map (degrees north -90 - 90)
+  NORTH : the Northern border of the map (degrees north -90 - 90)
+
+For AZEQDIST projections:
+
+  CENTER  : A list ref to the center point of the projection, in degrees, ie: [-170, 70]
+  RADIUS  : A minimum radius in kilometers
+
+For all projections:
+
+  RESOLUTION : The size of the map database used:  "full", "high", "intermediate", "low" or "crude"
+
+  RIVER_DETAIL : A list reference to which rivers to plot:
+                    1 = Permanent major rivers
+                    2 = Additional major rivers
+                    3 = Additional rivers
+                    4 = Minor rivers
+                    5 = Intermittent rivers - major
+                    6 = Intermittent rivers - additional
+                    7 = Intermittent rivers - minor
+                    8 = Major canals
+                    9 = Minor canals
+                   10 = Irrigation canals                
+                                    
+  BOUNDARIES : A list reference to which boundaries to plot:
+                    1 = National boundaries
+                    2 = State boundaries within the Americas
+                    3 = Marine boundaries                                                           
+
+  COASTS : A boolean value:  plot coasts = true, don't = false
+
+  LONGRID  : The grid spacing for longitude lines in degrees (undef = no lon grids)
+  LATGRID  : The grid spacing for latitude lines in degrees (undef = no lat grids)
+
+=head2 map_points
+
+=for ref
+
+Plots lon/lat points on an existing map with projection.
+
+=for usage
+
+  map_points ($lon, $lat, {PROJECTION => ..., CENTER => [...,...]});
+
+  PROJECTION defaults to LINEAR.  If AZEQDIST is specified, then the 
+  CENTER lon/lat must be specified.
+
+=head2 map_line
+
+=for ref
+
+Plots lon/lat lines on an existing map with projection.
+
+=for usage
+
+  map_line ($lon, $lat, {PROJECTION => ..., CENTER => [...,...], MISSING => ...});
+
+  PROJECTION defaults to LINEAR.  If AZEQDIST is specified, then the 
+  CENTER lon/lat must be specified.  To plot more than one line
+  segment, specify MISSING to be a separator value.
+
+=head2 fetch
+
+=for ref
+
+Get lon and lat PDLs.
+
+=for usage      	
+
+Arguments:  
+  A hash reference with these options available:
+  WEST  : the Western border of the map (degrees west -180 - 180)
+  EAST  : the Eastern border of the map (degrees west -180 - 180)
+  SOUTH : the Southern border of the map (degrees north -90 - 90)
+  NORTH : the Northern border of the map (degrees north -90 - 90)
+
+  RESOLUTION : The size of the map database used:  "full", "high", "intermediate", "low" or "crude"
+
+  RIVER_DETAIL : A list reference to which rivers to plot:
+                    1 = Permanent major rivers
+                    2 = Additional major rivers
+                    3 = Additional rivers
+                    4 = Minor rivers
+                    5 = Intermittent rivers - major
+                    6 = Intermittent rivers - additional
+                    7 = Intermittent rivers - minor
+                    8 = Major canals
+                    9 = Minor canals
+                   10 = Irrigation canals                
+                                    
+  BOUNDARIES : A list reference to which boundaries to plot:
+                    1 = National boundaries
+                    2 = State boundaries within the Americas
+                    3 = Marine boundaries                                                           
+
+  COASTS : A boolean value:  plot coasts = true, don't = false
+  SEPARATOR : A numeric value:  The value to place between each separate line segment.
+
+Returns:  ($lon, $lat) large 1-D PDLs
+
+=for example
+  ($lon, $lat) = PDL::Graphics::Map::fetch (
+                                     {WEST  => -180, 
+				      EAST  => 180, 
+                                      SOUTH => -90,
+                                      NORTH => 90, 
+                                      RESOLUTION => 'crude', 
+                                      RIVER_DETAIL => [1,2,3,4]};
+
+=head1 AUTHOR
+
+Doug Hunt, dhunt\@ucar.edu.
+
+=head1 SEE ALSO
+
+perl(1), PDL(1), pscoast(l).
+
+=cut
+EOD
+
+$VERSION = '0.05';
+
+#-------------------------------------------------------------------------
+# Perl portion of the interface (put by PP into the .pm file)
+#-------------------------------------------------------------------------
+
+pp_addpm (<<'EOPM');
+
+use PDL::Primitive;
+use PDL::Math;
+use PDL::Core;
+use PDL::Basic;
+use PDL::Types;
+use PDL::Slices;
+use PDL::Graphics::PGPLOT;
+use PGPLOT;
+use vars qw (%projection);
+
+sub fetch {
+  my $parms   = shift;
+
+  my @box = exists($$parms{BOX}) ? @{$$parms{BOX}} : (-180, 180, -90, 90);
+  die "bounding box must contain 4 edges:  WESN in degrees (-180 -> 180, -90 -> 90)"
+    unless (@box == 4);
+
+  my $res = exists($$parms{RESOLUTION}) ? 
+	substr($$parms{RESOLUTION}, 0, 1) : 'c';  # defaults to crude resolution
+
+  my @rivers = @{$$parms{RIVER_DETAIL}};
+  push (@rivers, (0) x 10);  # note 10 river types
+
+  my @borders = @{$$parms{BOUNDARIES}};
+  push (@borders, (0) x 3);  # note 3 boundary types
+
+  my $rlevels = pack ("i*", @rivers);     # defaults to no rivers and canals
+  my $blevels = pack ("i*", @boundaries); # defaults to no national boundaries
+  my $drawc   = 1;                        # defaults to 'draw coastlines'
+
+  my $separator = exists($$parms{SEPARATOR}) ? $$parms{SEPARATOR} : -999;
+
+  my $lat = '';
+  my $lon = '';
+
+  pscoast($box[0], $box[1], $box[2], $box[3], $res, $rlevels, $blevels, $drawc, $lon, $lat);
+
+  my $size = length($lat)/8;
+
+  # Make a PDL of these data
+  my $latp = PDL->new;           # Create piddle
+  $latp->set_datatype($PDL_D);   #   as a double array
+  $latp->setdims([$size]);       # Set dimensions
+  ${$latp->get_dataref} = $lat;  # Assign the data
+  $latp->upd_data();             # Sync up everything - $cp is ready to be used.        
+
+  my $lonp = PDL->new;           # Create piddle
+  $lonp->set_datatype($PDL_D);   #   as a double array
+  $lonp->setdims([$size]);       # Set dimensions
+  ${$lonp->get_dataref} = $lon;  # Assign the data
+  $lonp->upd_data();             # Sync up everything - $cp is ready to be used.        
+
+  $lonp = $lonp->badmask($separator);
+  $latp = $latp->badmask($separator);
+  
+  return ($lonp, $latp);
+
+}
+
+# Convert lat/lon (degrees, -90 to 90, -180 to 180) to XY positions
+# according to an azimuthal eqidistant projection
+# (see http://mathworld.wolfram.com/StereographicProjection.html)
+sub lonlat2azequi {
+  my $lon = shift;   # PDL of one or more lons
+  my $lat = shift;   # "" ""              lats
+
+  my $lon0 = shift;  # reference (center) longitude (scalar)
+  my $lat0 = shift;  # reference (center) latitude
+
+  my $pi   = 3.141592653589793238;
+  my ($a, $b) = (6378.1363, 6356.7516);	# equatorial, polar Earth radii
+  my $r       = ($a+$b)/2; # average Earth radius (use spherical approximate projections)
+
+  my $del = 1e-6;
+  my $m = ((abs($lat - $lat0) < $del) & (abs($lon - $lon0) < $del))->setbadtoval(0);
+
+  # subtract modulo 360 (acck!)
+  my $clon = $lon - $lon0;
+  while (any $clon >  180) { $clon = ($clon >  180) * ($clon-360) + ($clon <=  180) * $clon; }  
+  while (any $clon < -180) { $clon = ($clon < -180) * ($clon+360) + ($clon >= -180) * $clon; }  
+
+  # convert lat/lons to radians
+  $clon  = $clon * ($pi/180);
+  $lat  = $lat * ($pi/180);  
+  $lon0 = pdl ($lon0 * ($pi/180))->dummy(0,$clon->nelem);
+  $lat0 = pdl ($lat0 * ($pi/180))->dummy(0,$clon->nelem);  
+
+  my $c = acos ( sin($lat0)*sin($lat) + cos($lat0)*cos($lat)*cos($clon) );
+  my $k = $r * $c/sin($c);
+
+  my $x = $k * cos($lat)*sin($clon);
+  my $y = $k * (cos($lat0)*sin($lat) - sin($lat0)*cos($lat)*cos($clon) );
+
+  # set all points at origin to 0,0
+  (my $t = $x->where($m)) .= 0;
+  (my $t = $y->where($m)) .= 0;
+
+  return ($x, $y);
+}
+
+
+# Convert XY positions to lat/lon (degrees, -90 to 90, -180 to 180) 
+# according to an azimuthal eqidistant projection
+# (see http://mathworld.wolfram.com/StereographicProjection.html)
+sub azequi2lonlat {
+  my $x = shift;   # PDL of one or more x coordinates
+  my $y = shift;   # "" ""              y "" 
+
+  my $lon0 = shift;  # reference (center) longitude (scalar)
+  my $lat0 = shift;  # reference (center) latitude
+
+  my $pi   = 3.141592653589793238;
+  my ($a, $b) = (6378.1363, 6356.7516);	# equatorial, polar Earth radii
+  my $r       = ($a+$b)/2; # average Earth radius (use spherical approximate projections)
+
+  my $case = 1;
+  if ($lat0 == 90) { $case = 2; } elsif ($lat0 == -90) { $case = 3; }
+
+  $lon0 = pdl ($lon0 * ($pi/180))->dummy(0,$x->nelem);
+  $lat0 = pdl ($lat0 * ($pi/180))->dummy(0,$y->nelem);  
+
+  $x /= $r;
+  $y /= $r;
+
+  my $c = sqrt($x**2 + $y**2);
+
+  my $lat = asin (cos($c)*sin($lat0) + ($y*sin($c)*cos($lat0))/$c);
+
+  my $lon;
+  if ($case == 1) {
+    $lon = $lon0 + atan2 ($x*sin($c), $c*cos($lat0)*cos($c) - $y*sin($lat0)*sin($c));
+  } elsif ($case == 2) {
+    $lon = $lon0 + atan2 ($x,-$y);
+  } else {
+    $lon = $lon0 + atan2 ($x, $y);
+  }
+
+  # convert to degrees
+  $lon  = $lon * (180/$pi);
+  $lat  = $lat * (180/$pi);  
+
+  return ($lon, $lat);
+}
+
+# map of projection names to projection subroutines
+%projection = (LINEAR   => sub { return ($_[0], $_[1]); },  # lon/lat = x/y for LINEAR projection
+               AZEQDIST => \&lonlat2azequi);
+
+# Draw points with projection
+sub map_points {
+  my $lon = shift;
+  my $lat = shift;
+  my $parms = shift;
+
+  my $proj = exists($$parms{PROJECTION}) ? $$parms{PROJECTION} : 'LINEAR';  #  defaults to LINEAR
+  my @o    = (0,0);   # dummy projection center
+
+  if ($proj eq 'AZEQDIST') {
+    die "Must supply projection center point (CENTER = [lon, lat]) for AZEQDIST projection"
+     unless (exists($$parms{CENTER}) && ((@o = @{$$parms{CENTER}}) == 2));
+  }
+
+  # project lon/lat -> x/y
+  my ($x, $y) = &{$projection{$proj}}($lon, $lat, @o);
+
+  # plot
+  points $x, $y, $parms;
+}
+
+
+# Draw lines with projection
+sub map_line {
+  my $lon = shift;
+  my $lat = shift;
+  my $parms = shift;
+
+  my $proj = exists($$parms{PROJECTION}) ? $$parms{PROJECTION} : 'LINEAR';  #  defaults to LINEAR
+  my @o    = (0,0);   # dummy projection center
+
+  if ($proj eq 'AZEQDIST') {
+    die "Must supply projection center point (CENTER = [lon, lat]) for AZEQDIST projection"
+     unless (exists($$parms{CENTER}) && ((@o = @{$$parms{CENTER}}) == 2));
+  }
+
+  # project lon/lat -> x/y
+  my ($x, $y) = &{$projection{$proj}}($lon, $lat, @o);
+
+  # plot
+  line $x, $y, $parms;
+}
+  
+# Draw a map of some section of the World in various projections and with various
+# options.  See POD doc above for details.
+sub worldmap {
+  my $parms = shift;
+
+  my $proj = exists($$parms{PROJECTION}) ? $$parms{PROJECTION} : 'LINEAR';  #  defaults to LINEAR
+  my @b    = exists($$parms{BOX}) ? @{$$parms{BOX}} : (-180, 180, -90, 90); #  bounding box in degrees
+  my @bxy  = @b;      # assume linear projection for now                    #  bounding box in XY after projection
+  my @o    = (0,0);   # dummy projection center
+
+  my $bad     = -99999;
+  my ($a, $b) = (6378.1363, 6356.7516); # equatorial and polar Earth radii
+  my $pi      = 3.141592653589793238;         
+
+  # compute map edges if only a center/radius is given (Azimuthal equidistant projections)
+  if ($proj eq 'AZEQDIST') {
+
+    die "Must supply projection center point (CENTER = [lon, lat]) for AZEQDIST projection"
+     unless (exists($$parms{CENTER}) && ((@o = @{$$parms{CENTER}}) == 2));
+
+    die "Must supply projection radius (RADIUS = val_in_km) for AZEQDIST projection"
+     unless (exists($$parms{RADIUS}) && ((my $r = $$parms{RADIUS}) > 0));
+
+    # determine edge points from center and radius
+    my ($lonb, $latb) = azequi2lonlat (append(-$r, $r), append(-$r, $r), @o);
+
+    # if box goes over the pole, set max lat to 90
+    if ($o[1]+($r/$a)*(180/$pi) > 80) {
+      $b[0] = -180;
+      $b[1] = 180;
+      $b[2] = $latb->min;
+      $b[3] = 90;
+    } elsif ($o[1]-($r/$a)*(180/$pi) < -80) {  # set min lat to -90
+      $b[0] = -180;
+      $b[1] = 180;
+      $b[2] = -90;
+      $b[3] = $latb->max;
+    } else {
+      @b = ($lonb->list, $latb->list);
+    }
+
+    @bxy = (-$r, $r, -$r, $r);
+
+  } # end proj == AZEQDIST
+
+
+  #
+  ## set up PGPLOT
+  #
+
+  unless ($PDL::Graphics::PGPLOT::hold) {
+    pgscr 0, 1,1,1;    # set background color = white
+    pgscr 3, 0,0,0;    # set axis color = black
+    pgenv @bxy, 1, -2; # set bounds, specify equal scale on X/Y axes
+    pgsci (3);         # set to black
+    pgbox ('BC', 0, 0, 'BC', 0, 0);  # plot minimal border
+    $PDL::Graphics::PGPLOT::hold = 1;
+  }
+
+  #
+  ## get coasts/rivers/borders from GMT database
+  #
+
+  my ($lonmap, $latmap) = fetch({%$parms, BOX => \@b, SEPARATOR  => $bad});
+
+  # set separator to the bad value, so projection won't operate on it.
+  $lonmap->inplace->setvaltobad($bad);
+  $latmap->inplace->setvaltobad($bad);
+
+  # project map lon/lat -> x/y
+  my ($xmap, $ymap) = &{$projection{$proj}}($lonmap, $latmap, @o);
+
+  # set any NaNs generated in the projection to the bad value
+  $xmap->inplace->setnantobad;
+  $ymap->inplace->setnantobad;
+  $xmap = $xmap->setbadtoval($bad);
+  $ymap = $ymap->setbadtoval($bad);
+
+  # plot
+  line $xmap, $ymap, {MISSING => $bad, LINEWIDTH => 1, COLOR => 4};
+
+  # 
+  ## now deal with lon/lat lines
+  #
+
+  my $n = 50;       # the number of points plotted along the lat/lon lines 
+
+  # compute longitude lines for map
+  my $loninc = $$parms{LONGRID};  
+  if (defined($loninc)) {
+    my $lonlines =  ((sequence(360/$loninc)*$loninc)-180);  
+    my $nlonlines = $lonlines->nelem;
+    $lonlines    = $lonlines->dummy(0,$n)->append(zeroes(1)/0)->clump(2);  # put NaNs in to separate lines
+
+    # corresponding latitudes for longitude lines
+    my $lonlineslats = sequence($n)*(180/$n)-90;
+    $lonlineslats = $lonlineslats->dummy(0,$nlonlines)->xchg(0,1)->append(zeroes(1)/0)->clump(2);
+
+    # project to map
+    ($lonlines, $lonlineslats) = &{$projection{$proj}}($lonlines, $lonlineslats, @o);
+
+    $lonlines->inplace->setnantobad;
+    $lonlineslats->inplace->setnantobad;
+
+    # get rid of lines off map
+    my $d = $bxy[3] - $bxy[2];
+
+    # mask of all lon values within box 
+    my $m = ($lonlineslats >= ($bxy[2] - 2*$d) & $lonlineslats <= ($bxy[3] + 2*$d)); 
+    $lonlines     = $lonlines->where($m);
+    $lonlineslats = $lonlineslats->where($m);
+
+    $lonlines->inplace->badmask($bad);
+    $lonlineslats->inplace->badmask($bad);
+
+    # Plot
+    line $lonlines, $lonlineslats, {MISSING => $bad, LINEWIDTH => 1, COLOR => 3} if (defined($lonlines));
+
+    #
+    ## lon line labels
+    #
+
+    my $lablons  = ((sequence(360/$loninc)*$loninc)-180);
+    my $lablats  = pdl(($b[2] + $b[3])/2)->dummy(0,$lablons->nelem);
+    my $lablats1 = pdl(($b[2] + $b[3])/2.1)->dummy(0,$lablons->nelem);
+
+    # map projection
+    my ($x1, $y1) = &{$projection{$proj}}($lablons, $lablats, @o);
+    my ($x2, $y2) = &{$projection{$proj}}($lablons, $lablats1, @o);
+    
+    my $angles = atan2(($y2-$y1),($x2-$x1)) * (180/$pi);
+    $angles = ($angles >  90) * ($angles - 180) + ($angles <=  90) * $angles;
+    $angles = ($angles < -90) * ($angles + 180) + ($angles >= -90) * $angles;
+
+    # make sure the label is on the map
+    my $m = ($x1 > $bxy[0] & $x1 < $bxy[1] & $y1 > $bxy[2] & $y1 < $bxy[3]);
+
+    # Plot longitude labels
+    pgsch(0.85);  # small characters
+    for (my $i=0;$i<$x1->nelem;$i++) {
+      next unless ($m->at($i));
+      pgptxt ($x1->at($i), $y1->at($i), $angles->at($i), 0.5, int($lablons->at($i)));
+    }
+
+  }
+
+
+  # compute longitude lines for map
+  my $latinc = $$parms{LATGRID};  
+  if (defined($latinc)) {
+
+    # compute latitude lines for map
+    my $latlines     =  ((sequence(180/$latinc)*$latinc)-90);
+    my $nlatlines = $latlines->nelem;
+    $latlines     = $latlines->dummy(0,$n+1)->append(zeroes(1)/0)->clump(2);  # put in NaNs in to separate lines
+
+    # corresponding longitudes for latitude lines
+    my $latlineslons = sequence($n+1)*(360/$n)-180;
+    $latlineslons = $latlineslons->dummy(0,$nlatlines)->xchg(0,1)->append(zeroes(1)/0)->clump(2);
+
+    # project to map
+    ($latlineslons, $latlines) = &{$projection{$proj}}($latlineslons, $latlines, @o);
+
+    $latlines->inplace->setnantobad;
+    $latlineslons->inplace->setnantobad;
+
+    # get rid of lines off map
+    my $d = $bxy[1] - $bxy[0];
+    my $m = ($latlineslons >= ($bxy[0] - 2*$d) & $latlineslons <= ($bxy[1] + 2*$d)); # mask of all lon values within box 
+    $latlines     = $latlines->where($m);
+    $latlineslons = $latlineslons->where($m);
+
+    $latlines->inplace->badmask($bad);
+    $latlineslons->inplace->badmask($bad);
+
+    # Plot
+    line $latlineslons, $latlines, {MISSING => $bad, LINEWIDTH => 1, COLOR => 3} if (defined($latlines));
+
+    #
+    ## lat line labels
+    #
+
+    my $lablats  = ((sequence(180/$latinc)*$latinc)-90);
+    my $lablons  = pdl(($b[0] + $b[1])/2)->dummy(0,$lablats->nelem);
+    my $lablons1 = pdl(($b[0] + $b[1])/2.1)->dummy(0,$lablats->nelem);
+
+    # map projection
+    my ($x1, $y1) = &{$projection{$proj}}($lablons, $lablats, @o);
+    my ($x2, $y2) = &{$projection{$proj}}($lablons1,$lablats, @o);
+    
+    my $angles = atan2(($y2-$y1),($x2-$x1)) * (180/$pi);
+    $angles = ($angles >  90) * ($angles - 180) + ($angles <=  90) * $angles;
+    $angles = ($angles < -90) * ($angles + 180) + ($angles >= -90) * $angles;
+
+    # make sure the label is on the map
+    my $m = ($x1 > $bxy[0] & $x1 < $bxy[1] & $y1 > $bxy[2] & $y1 < $bxy[3]);
+
+    # Plot latitude labels
+    pgsch(0.85);  # small characters
+    for (my $i=0;$i<$x1->nelem;$i++) {
+      next unless ($m->at($i));
+      pgptxt ($x1->at($i), $y1->at($i), $angles->at($i), 0.5, int($lablats->at($i)));
+    }
+
+  } 
+
+}            
+
+EOPM
+
+#-------------------------------------------------------------------------
+# XS code for pscoast
+#-------------------------------------------------------------------------
+pp_addxs (<<'EOXS');
+void
+pscoast (west, east, south, north, res, rlevels, blevels, draw_coast, lon, lat)
+  	double west
+	double east
+	double south
+	double north
+	char   res
+	int *rlevels
+	int *blevels
+	int draw_coast
+	SV *lon
+	SV *lat
+CODE:
+	{
+		pscoast (west, east, south, north, res, rlevels, blevels, draw_coast, lon, lat);
+	}
+OUTPUT:
+	lon
+	lat
+EOXS
+
+pp_done();
+
